@@ -1,0 +1,191 @@
+---
+title: "regret_1_processing"
+author: "Anonymized for peer review"
+date: "2024-12-02"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(include = TRUE)
+
+if(!suppressWarnings(require(pacman))){install.packages("pacman");library("pacman")}
+p_load(tidyverse, tidyr, dplyr, ggplot2, readxl, lme4, stats, effectsize, sjPlot, readr, GLMMadaptive, ggpubr, patchwork, lubridate, qualtRics, ggpubr, wordcloud, tm, chatgpt, purrr, openai, httr, jsonlite, DescTools, ggthemr, brms)
+```
+
+# Data processing
+
+```{r}
+# function to extract tree_probabilities
+extract_tree_values <- function(tree_data, tree_label) {
+  str_extract(tree_data, paste0("'", tree_label, "': \\[([^\\]]+)\\]")) %>%
+    str_extract_all("[0-9\\.]+") %>%
+    map(as.numeric) %>%
+    unlist()
+}
+```
+
+```{r}
+#data_workerids <- read.csv("../../data/regret_preregistered_1-workerids.csv")
+data_raw = read.csv("../../data/regret_preregistered_1-merged.csv")
+data_processed <- data_raw |>
+  filter(grepl("img/tree", stimulus) | grepl("survey-likert", trial_type) | grepl("survey-html-form", trial_type)) |> 
+  dplyr::select(workerid, proliferate.condition, points, response, totalpoints, trial_index, trial_type, rt, tree_probabilities) |>
+  mutate(
+      age = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'age':\\s*(\\d+)"), NA),
+      race = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'race':\\s*'([^']*)'"), NA),
+      gender = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'gender':\\s*'([^']*)'"), NA),
+      ethnicity = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'ethnicity':\\s*'([^']*)'"), NA),
+      feedback = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'feedback':\\s*'([^']*)'"), NA),
+      best_tree = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'best_tree':\\s*'([^']*)'"), NA),
+      confidence = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'confidence':\\s*'([^']*)'"), NA),
+      ripe_proportion = ifelse(grepl("survey-html-form", trial_type), str_extract(response, "'ripe_proportion':\\s*(\\d+)"), NA)
+    ) |>
+  # remove any extraneous characters from extracted values
+  mutate(
+    age = str_remove_all(age, "'age':\\s*"),
+    race = str_remove_all(race, "'race':\\s*'|'"),
+    gender = str_remove_all(gender, "'gender':\\s*'|'"),
+    ethnicity = str_remove_all(ethnicity, "'ethnicity':\\s*'|'"),
+    feedback = str_remove_all(feedback, "'feedback':\\s*'|'"),
+    best_tree = str_remove_all(best_tree, "'best_tree':\\s*'|'"),
+    confidence = str_remove_all(confidence, "'confidence':\\s*'|'"),
+    ripe_proportion = str_remove_all(ripe_proportion, "'ripe_proportion':\\s*")
+  ) |>
+  mutate(confidence = case_when(
+    confidence == "not_at_all_confident" ~ 1,
+    confidence == "a_little_bit_confident" ~ 2,
+    confidence == "moderately_confident" ~ 3,
+    confidence == "extremely_confident" ~ 4
+  )) |>
+  mutate(best_tree = case_when(
+    best_tree == "right" ~ 1,
+    best_tree == "center" ~ 2,
+    best_tree == "left" ~ 3
+  )) |>
+  mutate(ripe_proportion = as.numeric(ripe_proportion)) |>
+  mutate(regret = ifelse(grepl("html-slider-response", trial_type), response, NA)) |>
+  pivot_wider(
+    names_from = trial_type,
+    values_from = response
+  ) |>
+  group_by(workerid) |>
+  mutate(avg_regret = mean(as.numeric(regret), na.rm = TRUE)) |>
+  mutate(points = replace_na(points, 0),
+         totalpoints = cumsum(points)) |>
+  mutate(final_points = last(totalpoints, order_by = trial_index)) |>
+  ungroup() |>
+  filter(!is.na(points)) |>
+  group_by(workerid) |>
+  mutate(trial_index = row_number()) |>
+  mutate(after_regret = lag(regret)) |>
+  mutate(after_regret = ifelse(is.na(after_regret), 0, 1)) |>
+  ungroup() |>
+  rename(condition = proliferate.condition) |>
+  mutate(choice = case_when(`html-keyboard-response` == "arrowleft" ~ 1,
+                            `html-keyboard-response` == "arrowup" ~ 2,
+                            `html-keyboard-response` == "arrowright" ~ 3)) |>
+  dplyr::select(-c(`html-slider-response`, `html-keyboard-response`, `survey-html-form`)) |>
+  mutate(trial_type = ifelse(!is.na(regret), "regret", "noregret")) |>
+  group_by(workerid) |>
+  mutate(
+    last_choice = lag(choice), 
+    last_choice = zoo::na.locf(last_choice, na.rm = FALSE) 
+  ) %>%
+  mutate(
+    switch = ifelse(choice != last_choice, 1, 0)
+  ) |>
+  replace_na(list(switch = 0)) |>
+  mutate(avg_switch = sum(switch)) |>
+  mutate(trial_index = ifelse(trial_type == "noregret", cumsum(trial_type == "noregret"), NA)) |>
+  mutate(lag_totalpoints = lag(totalpoints)) |>
+  mutate(lag_regret = lag(regret)) %>%
+  # extracting probabilities for each tree
+  mutate(
+    tree_1 = map(tree_probabilities, ~extract_tree_values(.x, "tree_1")),
+    tree_2 = map(tree_probabilities, ~extract_tree_values(.x, "tree_2")),
+    tree_3 = map(tree_probabilities, ~extract_tree_values(.x, "tree_3"))
+  ) %>%
+  # extracting just the first value for each tree (i.e., expected reward)
+  mutate(
+    tree_1 = map_dbl(tree_1, ~.x[2]),
+    tree_2 = map_dbl(tree_2, ~.x[2]),
+    tree_3 = map_dbl(tree_3, ~.x[2])
+  ) |>
+  unnest(cols = c(tree_1, tree_2, tree_3)) |>
+  ungroup() |>
+  # for each participant, create a bset_tree, medium_tree, and worst_tree variable
+  mutate(tree_best = case_when(
+    tree_1 == 0.7 ~ 1,
+    tree_2 == 0.7 ~ 2,
+    tree_3 == 0.7 ~ 3),
+        tree_medium = case_when(
+    tree_1 == 0.5 ~ 1,
+    tree_2 == 0.5 ~ 2,
+    tree_3 == 0.5 ~ 3),
+        tree_worst = case_when(
+    tree_1 == 0.2 ~ 1,
+    tree_2 == 0.2 ~ 2,
+    tree_3 == 0.2 ~ 3)) |>
+# categorize each choice on each trial as being the best, medium, or worst
+  mutate(choice_goodbad = case_when(
+    choice == tree_best ~ "best",
+    choice == tree_medium ~ "medium",
+    choice == tree_worst ~ "worst"
+  )) |>
+  mutate(selected_best = ifelse(choice_goodbad == "best", 1, 0)) |>
+  dplyr::select(-tree_probabilities) |>
+  group_by(workerid) |>
+   mutate(tree_best = zoo::na.locf(tree_best, na.rm = FALSE)) |>
+  # compare if tree_best and best_tree are the same, then code guess_correctly = 1, otherwise 0
+  mutate(guess_correctly = ifelse(tree_best == best_tree, 1, 0)) |>
+  mutate(
+    points_best = sum(points[choice == tree_best & points == 1], na.rm = TRUE)/sum(choice == tree_best, na.rm = TRUE),
+    points_medium = sum(points[choice == tree_medium & points == 1], na.rm = TRUE)/sum(choice == tree_medium, na.rm = TRUE),
+    points_worst = sum(points[choice == tree_worst & points == 1], na.rm = TRUE)/sum(choice == tree_worst, na.rm = TRUE)
+  ) |>
+  # calculate average rt for noregret trials only, add a new variable without removing regret trials from the dataset
+  mutate(avg_rt = mean(rt[trial_type == "noregret" & trial_index < 61], na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(expected_value = case_when(
+    (choice_goodbad == "best" & trial_type == "noregret") ~ .7,
+    (choice_goodbad == "medium" & trial_type == "noregret") ~ .5,
+    (choice_goodbad == "worst" & trial_type == "noregret") ~ .2
+  )) |>
+  group_by(workerid) |>
+  mutate(total_expected_value = sum(expected_value, na.rm = TRUE)) |>
+  mutate(lag_expected_value = lag(expected_value)) |>
+  ungroup() |>
+  mutate(source = "data")
+  
+# save data_processed
+write.csv(data_processed, "../../data/regret_preregistered_1-merged_processed.csv")
+```
+
+```{r}
+data_short <- data_processed |>
+  dplyr::select(workerid, condition, final_points, avg_regret, total_expected_value) |>
+  distinct()
+
+# save data_processed
+write.csv(data_short, "../../data/regret_preregistered_1-merged_short.csv")
+```
+
+# Calculating participant bonuses
+
+```{r eval=FALSE, include=FALSE}
+bonus_payments <- data_processed |>
+  group_by(workerid) |>
+  summarize(workerid = mean(workerid, na.rm = TRUE), final_points = mean(final_points, na.rm = TRUE)) |>
+  left_join(data_workerids, by = "workerid") |>
+  mutate(bonus = round(final_points*0.0167,2)) |>
+  arrange(prolific_participant_id) 
+  
+# print a string of format "workerid,bonus\n" for Prolific
+cat(paste(bonus_payments$prolific_participant_id, bonus_payments$bonus, sep = ","), sep = "\n")
+
+```
+
+```{r}
+sessionInfo() %>%
+  capture.output(file = "regret_1_processing_session_info.txt")
+```
