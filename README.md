@@ -20,8 +20,8 @@ Kate Petrova\*, James J. Gross, Tobias Gerstenberg\
 
 1.  [Overview](#overview)
 2.  [Experiment and demos](#experiment)
-3.  [Repository structure]
-4.  [CRediT author statement]
+3.  [Repository structure](#repository-structure)
+4.  [CRediT author statement](#credit-author-statement)
 
 ------------------------------------------------------------------------
 
@@ -37,13 +37,13 @@ As part of the experiment, participants played a fruit-picking game we designed.
 
 Reward probabilities for the trees are 0.7, 0.5, and 0.2, assigned randomly to the randomly to the trees and remaining fixed throughout the experiment.
 
-Participants were assigned to one of three between-subject conditions. You can preview the experiment in your browser by following the demo links below.
+Participants were assigned to one of three between-subject conditions. You can preview the experiment in your browser by clicking on the condition links below.
 
 | Condition | Regret manipulation |
 |------------------------|-----------------------------------|
-| **Control ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=1))** | None |
-| **Early regret ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=3))** | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 1-30 |
-| **Late regret ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=4))** | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 31-60 |
+| [Control](https://kateptrv.github.io/cogsci_2025_demo/?condition=1) | None |
+| [Early regret](https://kateptrv.github.io/cogsci_2025_demo/?condition=3) | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 1-30 |
+| [Late regret](https://kateptrv.github.io/cogsci_2025_demo/?condition=4) | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 31-60 |
 
 ------------------------------------------------------------------------
 
