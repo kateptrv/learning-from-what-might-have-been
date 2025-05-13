@@ -1,43 +1,106 @@
-# learning-from-what-might-have-been
+# Learning  from  'What  Might  Have  Been': A  Bayesian Model of  Learning  from  Regret
 
-This is a repository containing all relevant data and code for the manuscript titled "Learning from what might have been: A Bayesian model of learning from regret", submitted to the 2025 meeting of the Cognitive Science Society.
+Kate Petrova\*, James J. Gross, Tobias Gerstenberg\
+47th Annual Meeting of the Cognitive Science Society (CogSci 2025, San Francisco,  CA)
 
-The preregistration for this project can be found here: <https://osf.io/ce5ub/?view_only=1e01d51a2c9a48a1a0645a0520e51830>.
+[PDF](https://github.com/kateptrv/learning-from-what-might-have-been/blob/main/learning_from_regret_cogsci2025.pdf) • [OSF preregistration](https://osf.io/8qs5h?view_only=f92560842de140d0b544194f850920ab) • [Experiment and demos]
 
-## Repository structure
+``` bibtex
+@inproceedings{petrova2025learningfromregret,
+  title     = {Learning From ‘What Might Have Been’: A Bayesian Model of Learning from Regret},
+  booktitle = {Proceedings of the 47th Annual Conference of the Cognitive Science Society},
+  author    = {Petrova, Kate and Gross, James J. and Gerstenberg, Tobias},
+  year      = {2025}
+}
+```
+
+------------------------------------------------------------------------
+
+## Contents
+
+1.  [Overview](#overview)
+2.  
+
+------------------------------------------------------------------------
+
+## Overview {#overview}
+
+Regret—a negative emotion we feel when we believe that the outcome of our action would have been better had we acted differently—can either catalyze or impair decision-making. In this work, we test the hypothesis that regret is more likely to hinder decision-making during the early stages of learning, when information is limited, but help during later stages of learning, when the learner has a better understanding of the environment.
+
+## Experiment and demos
+
+As part of the experiment, participants played a fruit-picking game we designed. On each trial (60 total), participants (A) chose one of three trees and (B) receive either a ripe fruit (1 point) or rotten fruit (0 points):
+
+![](learning-from-what-might-have-been/figures/fig1.png)
+
+Reward probabilities for the trees are 0.7, 0.5, and 0.2, assigned randomly to the randomly to the trees and remaining fixed throughout the experiment.
+
+Participants were assigned to one of three between-subject conditions. You can preview the experiment in your browser by following the demo links below.
+
+| Condition | Regret manipulation |
+|-----------------|----------------------------------------|
+| **Control ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=1))** | None |
+| **Early regret ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=3))** | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 1-30 |
+| **Late regret ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=4))** | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 31-60 |
+
+Model fits show **ω** predicts choice patterns and self-reported regret, highlighting counterfactual thinking as a key component of the cognitive appraisal pattern underlying the emotion of regret.
+
+------------------------------------------------------------------------
+
+## Repository structure {#repository-structure}
+
+```         
+├── code/ # all code used to process experiment data and fit computational models
+├── data/ # all raw and processed data from the experiment and models  
+├── experiment # jspsych experiment and the accompanying materials
+│   ├── img/              
+│   └── jspsych/             
+├── figures/ # all figures included in the paper
+```
 
 ### code
 
-All data processing, analysis, and simulation code used to generate files in the "data" folder as well as the figures and analyses reported in the manuscript.
+|  |  |
+|-----------------------|-------------------------------------------------|
+| `regret_1_processing.Rmd` | Used to process the raw experiment data (regret_preregistered_1-merged.csv) |
+| `regret_1_analysis.Rmd` | Used to carry out all analyses reported in the manuscript |
+| `regret_models.ipyb` | Contains code for the parameter fitting and simulation components of the computational models reported in the manuscript |
 
--   regret_1_processing.Rmd: used to process the raw experiment data (regret_preregistered_1-merged.csv)
-
--   regret_1_analysis.Rmd: used to carry out all analyses reported in the manuscript
-
--   regret_rl.ipyb: contains code for the parameter fitting and simulation components of the computational model reported in the manuscript
+The two `_session_info.txt` files contain information about the version of R and all necessary packages used in data processing and analyses.
 
 ### data
 
-All relevant data, including raw and processed experimental data and simulation outputs:
-
--   regret_preregistered_1-merged.csv: raw experiment data exported from proliferate.alps.science
-
--   regret_preregistered_1-merged_processed.csv: processed trial-by-trial experiment data (using regret_1_processing.Rmd)
-
--   regret_preregistered_1-merged_short.csv: processed participant-level experiment data (using regret_1_processing.Rmd)
-
--   regret_preregistered_1_for_sim.csv: experiment data processed for the parameter fitting step of the computational model
-
--   regret_1_sim.csv: omega and tau parameters for each participant generated using the GiG model in the regret_rl.ipyb file
-
--   cf_1_sim.csv: omega and tau parameters for each participant generated using the CS model in the regret_rl.ipyb file
-
--   simulation_output_all_participants.csv: simulated trial-by-trial data generated by the GiG model in the regret_rl.ipyb file
-
--   simulation_output_all_participants_null.csv: simulated trial-by-trial data generated by the Null model in the regret_rl.ipyb file
-
--   cf_simulation_output_all_participants.csv: simulated trial-by-trial data generated by the CS model in the regret_rl.ipyb file
+|  |  |
+|--------------------------------|----------------------------------------|
+| `regret_preregistered_1-merged.csv` | Raw experiment data exported from proliferate.alps.science |
+| `regret_preregistered_1-merged_processed.csv` | Processed trial-by-trial experiment data (using `regret_1_processing.Rmd` |
+| `regret_preregistered_1-merged_short.csv` | Processed participant-level experiment data (using `regret_1_processing.Rmd`) |
+| `regret_preregistered_1_for_sim.csv` | Experiment data processed for the parameter fitting step of the computational model in `regret_models.ipyb` |
+| `gig_mcmc.csv` | Fitted omega and eta parameters for the GiG model (generated by the parameter fitting step in `regret_models.ipyb)` |
+| `cs_mcmc.csv` | Fitted omega and eta parameters for the CS model (generated by the parameter fitting step in `regret_models.ipyb)` |
+| `gig_simulation_thompson_eta.csv` | Simulated trial-by-trial data from the GiG model (generated by the simulation step in `regret_models.ipyb)` |
+| `null_simulation_thompson_eta.csv` | Simulated trial-by-trial data from the No Regret Null model (generated by the simulation step in `regret_models.ipyb)` |
+| `cf_simulation_thompson_eta.csv` | Simulated trial-by-trial data from the No Regret CS model (generated by the simulation step in `regret_models.ipyb)` |
 
 ### experiment
 
-Experiment in jsPsych
+|              |                      |
+|--------------|----------------------|
+| `index.html` | Main experiment file |
+
+------------------------------------------------------------------------
+
+## CRediT author statement {#credit-author-statement}
+
+*What is a [CRediT author statement](https://www.elsevier.com/authors/policies-and-guidelines/credit-author-statement)?*
+
+| Role | Contribution |
+|----------------------|--------------------------------------------------|
+| **Kate  Petrova** | Conceptualization; Methodology; Software; Validation; Formal analysis; Investigation; Data curation; Writing – original draft; Visualization; Project administration |
+| **James  J.  Gross** | Conceptualization; Writing – review & editing; Supervision |
+| **Tobias  Gerstenberg** | Conceptualization; Methodology; Writing – review & editing; Supervision; Funding acquisition |
+
+------------------------------------------------------------------------
+
+*Questions or issues?*\
+Open an issue or email **kpetrova [at] stanford.edu**.
