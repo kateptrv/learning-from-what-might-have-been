@@ -3,12 +3,12 @@
 Kate Petrova\*, James J. Gross, Tobias Gerstenberg\
 47th Annual Meeting of the Cognitive Science Society (CogSci 2025, San Francisco,  CA)
 
-[PDF](https://github.com/kateptrv/learning-from-what-might-have-been/blob/main/learning_from_regret_cogsci2025.pdf) • [OSF preregistration](https://osf.io/8qs5h?view_only=f92560842de140d0b544194f850920ab) • [Experiment and demos]
+[PDF](https://github.com/kateptrv/learning-from-what-might-have-been/blob/main/learning_from_regret_cogsci2025.pdf) • [OSF preregistration](https://osf.io/8qs5h?view_only=f92560842de140d0b544194f850920ab)
 
 ``` bibtex
 @inproceedings{petrova2025learningfromregret,
-  title     = {Learning From ‘What Might Have Been’: A Bayesian Model of Learning from Regret},
-  booktitle = {Proceedings of the 47th Annual Conference of the Cognitive Science Society},
+  title     = {Learning from ‘What Might Have Been’: A Bayesian Model of Learning from Regret},
+  booktitle = {Proceedings of the 47th {Annual} {Conference} of the {Cognitive} {Science} {Society}},
   author    = {Petrova, Kate and Gross, James J. and Gerstenberg, Tobias},
   year      = {2025}
 }
@@ -19,7 +19,9 @@ Kate Petrova\*, James J. Gross, Tobias Gerstenberg\
 ## Contents
 
 1.  [Overview](#overview)
-2.  
+2.  [Experiment and demos](#experiment)
+3.  [Repository structure]
+4.  [CRediT author statement]
 
 ------------------------------------------------------------------------
 
@@ -27,7 +29,7 @@ Kate Petrova\*, James J. Gross, Tobias Gerstenberg\
 
 Regret—a negative emotion we feel when we believe that the outcome of our action would have been better had we acted differently—can either catalyze or impair decision-making. In this work, we test the hypothesis that regret is more likely to hinder decision-making during the early stages of learning, when information is limited, but help during later stages of learning, when the learner has a better understanding of the environment.
 
-## Experiment and demos
+## Experiment and demos {#experiment}
 
 As part of the experiment, participants played a fruit-picking game we designed. On each trial (60 total), participants (A) chose one of three trees and (B) receive either a ripe fruit (1 point) or rotten fruit (0 points):
 
@@ -38,12 +40,10 @@ Reward probabilities for the trees are 0.7, 0.5, and 0.2, assigned randomly to t
 Participants were assigned to one of three between-subject conditions. You can preview the experiment in your browser by following the demo links below.
 
 | Condition | Regret manipulation |
-|-----------------|----------------------------------------|
+|------------------------|-----------------------------------|
 | **Control ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=1))** | None |
 | **Early regret ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=3))** | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 1-30 |
 | **Late regret ([demo](https://kateptrv.github.io/cogsci_2025_demo/?condition=4))** | "How much do you regret choosing this tree?" after each rotten fruit (0) on trials 31-60 |
-
-Model fits show **ω** predicts choice patterns and self-reported regret, highlighting counterfactual thinking as a key component of the cognitive appraisal pattern underlying the emotion of regret.
 
 ------------------------------------------------------------------------
 
