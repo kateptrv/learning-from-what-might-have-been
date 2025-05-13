@@ -33,7 +33,7 @@ Regret—a negative emotion we feel when we believe that the outcome of our acti
 
 As part of the experiment, participants played a fruit-picking game we designed. On each trial (60 total), participants (A) chose one of three trees and (B) receive either a ripe fruit (1 point) or rotten fruit (0 points):
 
-![](learning-from-what-might-have-been/figures/fig1.png)
+![](figures/fig1.png)
 
 Reward probabilities for the trees are 0.7, 0.5, and 0.2, assigned randomly to the randomly to the trees and remaining fixed throughout the experiment.
 
