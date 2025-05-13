@@ -1,19 +1,17 @@
 ---
 title: "regret_1_analysis"
-author: "Anonymized for peer review"
-date: "2024-12-02"
+author: "Kate Petrova"
+date: "2025-05-11"
 output: html_document
 ---
 
 # Setup
 
-
-
 ```{r setup, message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(include = TRUE)
 
 if(!suppressWarnings(require(pacman))){install.packages("pacman");library("pacman")}
-p_load(tidyverse, tidyr, dplyr, ggplot2, readxl, lme4, stats, effectsize, sjPlot, readr, GLMMadaptive, ggpubr, patchwork, lubridate, qualtRics, ggpubr, wordcloud, tm, chatgpt, purrr, openai, httr, jsonlite, DescTools, ggthemr, brms, ggdist)
+p_load(tidyverse, tidyr, dplyr, ggplot2, readxl, lme4, stats, effectsize, sjPlot, readr, GLMMadaptive, ggpubr, patchwork, lubridate, qualtRics, purrr, httr, jsonlite, DescTools, ggthemr, brms, ggdist, showtext, scales)
 ```
 
 ```{r}
@@ -23,6 +21,8 @@ data_short <- read.csv("../data/regret_preregistered_1-merged_short.csv")
 
 ```{r}
 ggthemr("grape", type = "outer", line_weight = 0.5, text_size = 14)
+
+showtext_auto()
 ```
 
 # Experiment Analyses
@@ -66,6 +66,7 @@ model2_brms <- brm(
 )
 tab_model(model2_brms)
 ```
+
 ### Hypothesis 3
 
 ```{r}
@@ -79,10 +80,11 @@ model3_brms <- brm(
 tab_model(model3_brms)
 ```
 
-## Figure 2
+## Figure 3
 
 ```{r}
-data_short |>
+ggthemr("fresh")
+fig3 <- data_short |>
   mutate(condition = case_when(
     condition == "control" ~ "Control",
     condition == "regret_early" ~ "Early Regret",
@@ -117,8 +119,8 @@ data_short |>
   ) +
   
   labs(x = "Condition", y = "Total Expected Value") +
-  scale_color_manual(values = c("#8FA6A1", "#A6415C", "#F2935C")) +
-  scale_fill_manual(values = c("#8FA6A1", "#A6415C", "#F2935C")) +
+  # scale_color_manual(values = c("#8FA6A1", "#9e7587", "#61062e")) +
+  # scale_fill_manual(values = c("#8FA6A1", "#9e7587", "#61062e")) +
   theme_minimal() +
   theme(legend.position = "none") +
   
@@ -127,11 +129,11 @@ data_short |>
         axis.text.y = element_text(size = 16),
         axis.title.x = element_text(size = 20),
         axis.title.y = element_text(size = 20)) +
-  theme(plot.background = element_rect(color = "black", size = 1)) +
   theme(panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank())
 
-
+print(fig3)
+ggsave(filename = "../figures/fig3.pdf", device = pdf, width = 8.27, height = 5.83)
 
 ```
 
@@ -146,18 +148,47 @@ data_demo |>
             sd_age = sd(age, na.rm = TRUE))
 
 data_demo |>
-  filter(ethnicity == "Hispanic") 
+  filter(gender == "Female") |>
+  nrow()
+
+data_demo |>
+  filter(gender == "Male") |>
+  nrow()
+
+data_demo |>
+  filter(gender == "Non-binary") |>
+  nrow()
+
+data_demo |>
+  filter(race == "White") |>
+  nrow()
+
+data_demo |>
+  filter(race == "Black/African American") |>
+  nrow()
+
+data_demo |>
+  filter(race == "Asian") |>
+  nrow()
+
+data_demo |>
+  filter(race == "Multiracial/Mixed") |>
+  nrow()
+
+data_demo |>
+  filter(ethnicity == "Hispanic") |>
+  nrow()
 
 ```
 
+# Model Analyses
 
-# Model analyses
-
-## Setup
+## Data processing
 
 ### Grass-is-Greener Model
+
 ```{r}
-regret_1_sim_data <- read.csv("../data/simulation_output_all_participants.csv") |>
+regret_1_sim_data <- read.csv("../data/gig_simulation_thompson_eta.csv") |>
   rename(workerid = participant) |> 
   mutate(trial_index = trial_index + 1) |>
   mutate(expected_value = case_when(
@@ -176,11 +207,14 @@ regret_1_sim_data <- read.csv("../data/simulation_output_all_participants.csv") 
   select(-c(trial_index, sim_count, points, choice_goodbad, expected_value)) |>
   distinct() |>
   left_join(data_short, by = "workerid")
+
 ```
 
 ### No-Regret Null Model
+
 ```{r}
-regret_1_sim_data_null <- read.csv("../data/simulation_output_all_participants_null.csv") |>
+regret_1_sim_data_null <-
+  read.csv("../data/null_simulation_thompson_eta.csv") |>
   rename(workerid = participant) |> 
   mutate(trial_index = trial_index + 1) |>
   mutate(expected_value = case_when(
@@ -201,10 +235,10 @@ regret_1_sim_data_null <- read.csv("../data/simulation_output_all_participants_n
   left_join(data_short, by = "workerid")
 ```
 
- 
 ### Counterfactual Sampling Model
+
 ```{r}
-cf_1_sim_data <- read.csv("../data/cf_simulation_output_all_participants.csv") |>
+cf_1_sim_data <- read.csv("../data/cf_simulation_thompson_eta.csv") |>
   rename(workerid = participant) |> 
   mutate(trial_index = trial_index + 1) |>
   mutate(expected_value = case_when(
@@ -225,9 +259,42 @@ cf_1_sim_data <- read.csv("../data/cf_simulation_output_all_participants.csv") |
   left_join(data_short, by = "workerid")
 ```
 
-### Combined simulation df for model comparison
+### Combined simulation df's for model comparison
+
+#### Theoretical omegas (Fig 2)
+
 ```{r}
-regret_1_sim_null <- read.csv("../data/simulation_output_all_participants_null.csv") |>
+combined_sim <- read.csv("../data/combined_simulation_thompson.csv") |>
+  rename(workerid = participant) |> 
+  mutate(trial_index = trial_index + 1) |> 
+  mutate(condition = str_remove(condition, "regret_")) |>
+  mutate(choice_goodbad = case_when(
+    choice_goodbad == "best"   ~ 0.7,
+    choice_goodbad == "medium" ~ 0.5,
+    choice_goodbad == "worst"  ~ 0.2
+  )) |>
+  group_by(workerid, trial_index, condition, model, omega) |>
+  mutate(sim_number = row_number()) |> 
+  ungroup() |>
+  select(workerid, trial_index, condition, choice_goodbad, sim_number, model, omega) |>
+  group_by(workerid, trial_index, condition, model, omega) |>
+  summarize(prob = mean(choice_goodbad, na.rm = TRUE)) |>
+  ungroup() 
+
+null_probs <- combined_sim |>
+  filter(model == "Null") |>
+  select(workerid, trial_index, condition, prob_null = prob)
+
+combined_sim <- combined_sim |>
+  left_join(null_probs, by = c("workerid", "trial_index", "condition")) |>
+  filter(model != "Null")
+```
+
+
+#### Fitted omega values (Fig 4)
+
+```{r}
+regret_1_sim_null <- read.csv("../data/null_simulation_thompson_eta.csv") |>
   rename(workerid = participant) |> 
   mutate(trial_index = trial_index + 1) |> 
   mutate(choice_null = case_when(
@@ -240,7 +307,8 @@ regret_1_sim_null <- read.csv("../data/simulation_output_all_participants_null.c
   ungroup() |>
   select(workerid, trial_index, condition, choice_null, sim_number)
 
-regret_1_sim_cf <- read.csv("../data/cf_simulation_output_all_participants.csv") |>
+regret_1_sim_cf <-
+read.csv("../data/cf_simulation_thompson_eta.csv") |>
   rename(workerid = participant) |> 
   mutate(trial_index = trial_index + 1) |> 
   mutate(choice_cf = case_when(
@@ -253,7 +321,7 @@ regret_1_sim_cf <- read.csv("../data/cf_simulation_output_all_participants.csv")
   ungroup() |>
   select(workerid, trial_index, condition, choice_cf, sim_number)
 
-regret_1_sim <- read.csv("../data/simulation_output_all_participants.csv") |>
+regret_1_sim <- read.csv("../data/gig_simulation_thompson_eta.csv") |>
   rename(workerid = participant) |> 
   mutate(trial_index = trial_index + 1) |> 
   mutate(choice_gg = case_when(
@@ -303,262 +371,656 @@ data_combined <- sim_combined |>
 
 ## Model fit
 
-### Figure 3
+```{r}
+# Helper function for proessing sim data
+process_sim_data <- function(sim_data) {
+  sim_data %>%
+    group_by(workerid, trial_index, choice_goodbad) %>%
+    summarize(prob = n() / 100, .groups = "drop") # 100 sims per participant
+}
+
+```
 
 ```{r}
-data_combined |>
+# process simulation data
+sim_probs_regret <- read.csv("../data/gig_simulation_thompson_eta.csv") %>%
+  rename(workerid = participant) %>%
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) %>%
+  process_sim_data()
+
+sim_probs_null <- read.csv("../data/null_simulation_thompson_eta.csv") %>%
+  rename(workerid = participant) %>%
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) %>%
+  process_sim_data()
+
+# filter data
+data_filtered <- data_processed %>%
+  filter(trial_type == "noregret", condition != "control")
+
+# join simulation probabs with data
+data_regret <- data_filtered %>%
+  left_join(sim_probs_regret, by = c("workerid", "trial_index", "choice_goodbad")) %>%
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_regret = log(prob))
+
+data_null <- data_filtered %>%
+  left_join(sim_probs_null, by = c("workerid", "trial_index", "choice_goodbad")) %>%
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_null = log(prob))
+
+# combine trial-level ll
+combined_ll <- data_regret %>%
+  select(workerid, condition, trial_index, choice_goodbad, log_prob_regret) %>%
+  left_join(
+    data_null %>% select(workerid, trial_index, condition, choice_goodbad, log_prob_null),
+    by = c("workerid", "trial_index", "choice_goodbad")
+  )
+
+
+
+```
+
+### GiG vs Null
+
+```{r}
+# Load and process simulations
+sim_probs_regret <- read.csv("../data/gig_simulation_thompson_eta.csv") |>
+  rename(workerid = participant) |>
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) |>
+  process_sim_data()
+
+sim_probs_null <- read.csv("../data/null_simulation_thompson_eta.csv") |>
+  rename(workerid = participant) |>
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) |>
+  process_sim_data()
+
+# Filter human data to remove regret trials
+data_filtered <- data_processed |>
+  filter(trial_type == "noregret")
+
+# Merge sims and compute trial-level LLs
+data_regret <- data_filtered |>
+  left_join(sim_probs_regret, by = c("workerid", "trial_index", "choice_goodbad")) |>
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_regret = log(prob))
+
+data_null <- data_filtered |>
+  left_join(sim_probs_null, by = c("workerid", "trial_index", "choice_goodbad")) |>
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_null = log(prob))
+
+# Merge LLs
+combined_ll <- data_regret |>
+  select(workerid, trial_index, choice_goodbad, condition, log_prob_regret) |>
+  left_join(
+    data_null |> 
+      select(workerid, trial_index, choice_goodbad, log_prob_null),
+    by = c("workerid", "trial_index", "choice_goodbad"))
+
+# LL by participant
+data_combined_ll <- combined_ll |>
+  group_by(workerid, condition) %>%
+  summarize(
+    total_log_likelihood_regret = sum(log_prob_regret, na.rm = TRUE),
+    total_log_likelihood_null = sum(log_prob_null, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    lr_stat = 2 * (total_log_likelihood_regret - total_log_likelihood_null),
+    lr_factor = exp(total_log_likelihood_regret - total_log_likelihood_null)
+  )
+
+# AIC and BIC by condition
+aic_bic_by_condition <- data_combined_ll |>
+  group_by(condition) %>%
+  summarize(
+    LL_regret = sum(total_log_likelihood_regret),
+    LL_null = sum(total_log_likelihood_null),
+    n = n(),
+    AIC_regret = -2 * LL_regret + 2 * 1,
+    AIC_null   = -2 * LL_null + 2 * 1,
+    BIC_regret = -2 * LL_regret + log(n) * 1,
+    BIC_null   = -2 * LL_null + log(n) * 1,
+    .groups = "drop"
+  )
+
+# AIC/BIC by condition results
+print(aic_bic_by_condition)
+
+# summarize per participant and compute likelihood ratio
+data_combined_ll <- combined_ll |>
+  filter(condition != "control") |>
+  group_by(workerid) %>%
+  summarize(
+    total_log_likelihood_regret = sum(log_prob_regret, na.rm = TRUE),
+    total_log_likelihood_null = sum(log_prob_null, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(lr_stat = 2 * (total_log_likelihood_regret - total_log_likelihood_null),
+         lr_factor = exp(total_log_likelihood_regret - total_log_likelihood_null)) |>
+  ungroup()
+
+# overall LRT
+global_LRT <- 2 * sum(data_combined_ll$total_log_likelihood_regret - data_combined_ll$total_log_likelihood_null)
+p_global <- pchisq(global_LRT, df = nrow(data_combined_ll), lower.tail = FALSE)
+
+# t test 
+ttest_result <- t.test(
+  data_combined_ll$total_log_likelihood_regret,
+  data_combined_ll$total_log_likelihood_null,
+  paired = TRUE
+)
+print(ttest_result)
+
+# bootstrap ci per participant
+set.seed(123)
+B <- 1000
+bootstrap_lrs <- replicate(B, {
+  sampled <- sample(data_combined_ll$lr_stat, size = nrow(data_combined_ll), replace = TRUE)
+  mean(sampled, na.rm = TRUE)
+})
+
+mean_lr <- mean(bootstrap_lrs)
+ci_lr <- quantile(bootstrap_lrs, c(0.025, 0.975))
+
+cat("Bootstrapped Mean LR:", mean_lr, "\n")
+cat("95% CI:", ci_lr[1], "to", ci_lr[2], "\n")
+
+cat("Global LRT:", global_LRT, "\n")
+cat("Global p-value:", format.pval(p_global, digits = 4), "\n")
+
+cat("Mean LR:", mean(data_combined_ll$lr_stat, na.rm = TRUE), "\n")
+cat("Mean LR factor:", exp(mean(data_combined_ll$lr_stat / 2)), "\n")
+
+# how many participants have lr difference > 0
+cat("Number of participants with LR > 0:", sum(data_combined_ll$lr_stat > 0), "\n")
+
+# overall AIC/BIC
+aic_regret <- -2 * sum(data_combined_ll$total_log_likelihood_regret) + 2 * 1
+aic_null   <- -2 * sum(data_combined_ll$total_log_likelihood_null) + 2 * 1
+bic_regret <- -2 * sum(data_combined_ll$total_log_likelihood_regret) + log(nrow(data_combined_ll)) * 1
+bic_null   <- -2 * sum(data_combined_ll$total_log_likelihood_null) + log(nrow(data_combined_ll)) * 1
+cat("AIC Regret:", aic_regret, "\n")
+cat("AIC Null:", aic_null, "\n")
+
+# LR distribution
+ggplot(data_combined_ll, aes(x = lr_stat)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Likelihood Ratio per Participant",
+       x = "2 × (LL_regret − LL_null)",
+       y = "Count")
+```
+
+### CS vs Null
+
+```{r}
+# Load and process simulations
+sim_probs_regret <- read.csv("../data/cf_simulation_thompson_eta.csv") |>
+  rename(workerid = participant) |>
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) |>
+  process_sim_data()
+
+sim_probs_null <- read.csv("../data/null_simulation_thompson_eta.csv") |>
+  rename(workerid = participant) |>
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) |>
+  process_sim_data()
+
+# Filter human data to remove regret trials
+data_filtered <- data_processed |>
+  filter(trial_type == "noregret")
+
+# Merge sims and compute trial-level LLs
+data_regret <- data_filtered |>
+  left_join(sim_probs_regret, by = c("workerid", "trial_index", "choice_goodbad")) |>
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_regret = log(prob))
+
+data_null <- data_filtered |>
+  left_join(sim_probs_null, by = c("workerid", "trial_index", "choice_goodbad")) |>
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_null = log(prob))
+
+# Merge LLs
+combined_ll <- data_regret |>
+  select(workerid, trial_index, choice_goodbad, condition, log_prob_regret) |>
+  left_join(
+    data_null |> 
+      select(workerid, trial_index, choice_goodbad, log_prob_null),
+    by = c("workerid", "trial_index", "choice_goodbad"))
+
+# LL by participant
+data_combined_ll <- combined_ll |>
+  group_by(workerid, condition) %>%
+  summarize(
+    total_log_likelihood_regret = sum(log_prob_regret, na.rm = TRUE),
+    total_log_likelihood_null = sum(log_prob_null, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    lr_stat = 2 * (total_log_likelihood_regret - total_log_likelihood_null),
+    lr_factor = exp(total_log_likelihood_regret - total_log_likelihood_null)
+  )
+
+# AIC and BIC by condition
+aic_bic_by_condition <- data_combined_ll |>
+  group_by(condition) %>%
+  summarize(
+    LL_regret = sum(total_log_likelihood_regret),
+    LL_null = sum(total_log_likelihood_null),
+    n = n(),
+    AIC_regret = -2 * LL_regret + 2 * 1,
+    AIC_null   = -2 * LL_null + 2 * 1,
+    BIC_regret = -2 * LL_regret + log(n) * 1,
+    BIC_null   = -2 * LL_null + log(n) * 1,
+    .groups = "drop"
+  )
+
+# AIC/BIC by condition results
+print(aic_bic_by_condition)
+
+# summarize per participant and compute likelihood ratio
+data_combined_ll <- combined_ll |>
+  filter(condition != "control") |>
+  group_by(workerid) %>%
+  summarize(
+    total_log_likelihood_regret = sum(log_prob_regret, na.rm = TRUE),
+    total_log_likelihood_null = sum(log_prob_null, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(lr_stat = 2 * (total_log_likelihood_regret - total_log_likelihood_null),
+         lr_factor = exp(total_log_likelihood_regret - total_log_likelihood_null)) |>
+  ungroup()
+
+# overall LRT
+global_LRT <- 2 * sum(data_combined_ll$total_log_likelihood_regret - data_combined_ll$total_log_likelihood_null)
+p_global <- pchisq(global_LRT, df = nrow(data_combined_ll), lower.tail = FALSE)
+
+# t test 
+ttest_result <- t.test(
+  data_combined_ll$total_log_likelihood_regret,
+  data_combined_ll$total_log_likelihood_null,
+  paired = TRUE
+)
+print(ttest_result)
+
+# bootstrap ci per participant
+set.seed(123)
+B <- 1000
+bootstrap_lrs <- replicate(B, {
+  sampled <- sample(data_combined_ll$lr_stat, size = nrow(data_combined_ll), replace = TRUE)
+  mean(sampled, na.rm = TRUE)
+})
+
+mean_lr <- mean(bootstrap_lrs)
+ci_lr <- quantile(bootstrap_lrs, c(0.025, 0.975))
+
+cat("Bootstrapped Mean LR:", mean_lr, "\n")
+cat("95% CI:", ci_lr[1], "to", ci_lr[2], "\n")
+
+cat("Global LRT:", global_LRT, "\n")
+cat("Global p-value:", format.pval(p_global, digits = 4), "\n")
+
+cat("Mean LR:", mean(data_combined_ll$lr_stat, na.rm = TRUE), "\n")
+cat("Mean LR factor:", exp(mean(data_combined_ll$lr_stat / 2)), "\n")
+
+# how many participants have lr difference > 0
+cat("Number of participants with LR > 0:", sum(data_combined_ll$lr_stat > 0), "\n")
+
+# overall AIC/BIC
+aic_regret <- -2 * sum(data_combined_ll$total_log_likelihood_regret) + 2 * 1
+aic_null   <- -2 * sum(data_combined_ll$total_log_likelihood_null) + 2 * 1
+bic_regret <- -2 * sum(data_combined_ll$total_log_likelihood_regret) + log(nrow(data_combined_ll)) * 1
+bic_null   <- -2 * sum(data_combined_ll$total_log_likelihood_null) + log(nrow(data_combined_ll)) * 1
+cat("AIC Regret:", aic_regret, "\n")
+cat("AIC Null:", aic_null, "\n")
+
+# LR distribution
+ggplot(data_combined_ll, aes(x = lr_stat)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Likelihood Ratio per Participant",
+       x = "2 × (LL_regret − LL_null)",
+       y = "Count")
+```
+
+### GiG vs CS
+
+```{r}
+# Load and process simulations
+sim_probs_regret <- read.csv("../data/gig_simulation_thompson_eta.csv") |>
+  rename(workerid = participant) |>
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) |>
+  process_sim_data()
+
+sim_probs_null <- read.csv("../data/cf_simulation_thompson_eta.csv") |>
+  rename(workerid = participant) |>
+  mutate(trial_index = trial_index + 1,
+         condition = str_remove(condition, "regret_")) |>
+  process_sim_data()
+
+# Filter human data to remove regret trials
+data_filtered <- data_processed |>
+  filter(trial_type == "noregret")
+
+# Merge sims and compute trial-level LLs
+data_regret <- data_filtered |>
+  left_join(sim_probs_regret, by = c("workerid", "trial_index", "choice_goodbad")) |>
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_regret = log(prob))
+
+data_null <- data_filtered |>
+  left_join(sim_probs_null, by = c("workerid", "trial_index", "choice_goodbad")) |>
+  mutate(prob = ifelse(is.na(prob), 1e-8, prob),
+         log_prob_null = log(prob))
+
+# Merge LLs
+combined_ll <- data_regret |>
+  select(workerid, trial_index, choice_goodbad, condition, log_prob_regret) |>
+  left_join(
+    data_null |> 
+      select(workerid, trial_index, choice_goodbad, log_prob_null),
+    by = c("workerid", "trial_index", "choice_goodbad"))
+
+# LL by participant
+data_combined_ll <- combined_ll |>
+  group_by(workerid, condition) %>%
+  summarize(
+    total_log_likelihood_regret = sum(log_prob_regret, na.rm = TRUE),
+    total_log_likelihood_null = sum(log_prob_null, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    lr_stat = 2 * (total_log_likelihood_regret - total_log_likelihood_null),
+    lr_factor = exp(total_log_likelihood_regret - total_log_likelihood_null)
+  )
+
+# AIC and BIC by condition
+aic_bic_by_condition <- data_combined_ll |>
+  group_by(condition) %>%
+  summarize(
+    LL_regret = sum(total_log_likelihood_regret),
+    LL_null = sum(total_log_likelihood_null),
+    n = n(),
+    AIC_regret = -2 * LL_regret + 2 * 1,
+    AIC_null   = -2 * LL_null + 2 * 1,
+    BIC_regret = -2 * LL_regret + log(n) * 1,
+    BIC_null   = -2 * LL_null + log(n) * 1,
+    .groups = "drop"
+  )
+
+# AIC/BIC by condition results
+print(aic_bic_by_condition)
+
+# summarize per participant and compute likelihood ratio
+data_combined_ll <- combined_ll |>
+  filter(condition != "control") |>
+  group_by(workerid) %>%
+  summarize(
+    total_log_likelihood_regret = sum(log_prob_regret, na.rm = TRUE),
+    total_log_likelihood_null = sum(log_prob_null, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(lr_stat = 2 * (total_log_likelihood_regret - total_log_likelihood_null),
+         lr_factor = exp(total_log_likelihood_regret - total_log_likelihood_null)) |>
+  ungroup()
+
+# overall LRT
+global_LRT <- 2 * sum(data_combined_ll$total_log_likelihood_regret - data_combined_ll$total_log_likelihood_null)
+p_global <- pchisq(global_LRT, df = nrow(data_combined_ll), lower.tail = FALSE)
+
+# t test 
+ttest_result <- t.test(
+  data_combined_ll$total_log_likelihood_regret,
+  data_combined_ll$total_log_likelihood_null,
+  paired = TRUE
+)
+print(ttest_result)
+
+# bootstrap ci per participant
+set.seed(123)
+B <- 1000
+bootstrap_lrs <- replicate(B, {
+  sampled <- sample(data_combined_ll$lr_stat, size = nrow(data_combined_ll), replace = TRUE)
+  mean(sampled, na.rm = TRUE)
+})
+
+mean_lr <- mean(bootstrap_lrs)
+ci_lr <- quantile(bootstrap_lrs, c(0.025, 0.975))
+
+cat("Bootstrapped Mean LR:", mean_lr, "\n")
+cat("95% CI:", ci_lr[1], "to", ci_lr[2], "\n")
+
+cat("Global LRT:", global_LRT, "\n")
+cat("Global p-value:", format.pval(p_global, digits = 4), "\n")
+
+cat("Mean LR:", mean(data_combined_ll$lr_stat, na.rm = TRUE), "\n")
+cat("Mean LR factor:", exp(mean(data_combined_ll$lr_stat / 2)), "\n")
+
+# how many participants have lr difference > 0
+cat("Number of participants with LR > 0:", sum(data_combined_ll$lr_stat > 0), "\n")
+
+# overall AIC/BIC
+aic_regret <- -2 * sum(data_combined_ll$total_log_likelihood_regret) + 2 * 1
+aic_null   <- -2 * sum(data_combined_ll$total_log_likelihood_null) + 2 * 1
+bic_regret <- -2 * sum(data_combined_ll$total_log_likelihood_regret) + log(nrow(data_combined_ll)) * 1
+bic_null   <- -2 * sum(data_combined_ll$total_log_likelihood_null) + log(nrow(data_combined_ll)) * 1
+cat("AIC Regret:", aic_regret, "\n")
+cat("AIC Null:", aic_null, "\n")
+
+# LR distribution
+ggplot(data_combined_ll, aes(x = lr_stat)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Likelihood Ratio per Participant",
+       x = "2 × (LL_regret − LL_null)",
+       y = "Count")
+```
+
+## Figure 2
+
+```{r}
+ggthemr("grape", type = "outer", line_weight = 0.5, text_size = 14)
+```
+
+```{r}
+# for background shading
+shade_df <- combined_sim |>
+  mutate(
+    condition = case_when(
+      condition == "control" ~ "Control",
+      condition == "regret_early" ~ "Early Regret",
+      condition == "regret_late" ~ "Late Regret"
+    )
+  ) |>
+  filter(condition != "Control") |>
+  distinct(condition, omega) |>
+  mutate(
+    xmin = if_else(condition == "Late Regret", -Inf, 31),
+    xmax = if_else(condition == "Late Regret", 30, Inf),
+    ymin = -Inf,
+    ymax = Inf
+  )
+```
+
+
+```{r}
+fig2 <- combined_sim |>
+  mutate(
+    condition = case_when(
+      condition == "control" ~ "Control",
+      condition == "regret_early" ~ "Early Regret",
+      condition == "regret_late" ~ "Late Regret"
+    ),
+    omega_label = paste0("ω = ", omega)
+  ) |>
+  filter(condition != "Control") |>
+  # rename the model names
+  mutate(model = case_when(
+    model == "GiG" ~ "Grass-Is-Greener",
+    model == "CS" ~ "Counterfactual Sampling",
+    model == "No Regret" ~ "No Regret"
+  )) |>
+ggplot(aes(x = trial_index)) +
+  # add the random chance line at y = 0.466
+  # geom_hline(yintercept = 0.4666, linetype = "dashed", color = "#ecece4") +
+  geom_vline(xintercept = 30.5, linetype = "dashed", color = "#ecece4") +
+  # add the ceiling line at y = 0.70
+  # geom_hline(yintercept = 0.7, linetype = "dashed", color = "black") +
+  # fit geom smooth separate for Null model vs. the other two
+  stat_smooth(
+    aes(y = prob_null, method = "loess", color = "No Regret", fill = "No Regret")) +
+  stat_smooth(
+    aes(y = prob, method = "loess", color = model, fill = model)) +
+  scale_color_manual(
+    name = NULL,
+    values = c(
+      "No Regret" = "#6B6C69",
+      "Grass-Is-Greener" = "#4C8659",
+      "Counterfactual Sampling" = "#A6415C"
+    )
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c(
+      "No Regret" = "#6B6C69",
+      "Grass-Is-Greener" = "#4C8659",
+      "Counterfactual Sampling" = "#A6415C"
+    )
+  ) +
+  labs(x = "Trial index", y = "Expected value") +
+    geom_text(aes(x = 12, y = 0.68, label = omega_label), 
+            color = "black", size = 4, show.legend = FALSE) +
+  geom_rect(data = shade_df,
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "white", alpha = 0.5, inherit.aes = FALSE) +
+  facet_grid(rows = vars(condition), cols = vars(omega), labeller = label_value) +
+  theme_minimal() +
+ theme(strip.text.x = element_blank()) +
+  theme(axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 18)) +
+  theme(legend.text = element_text(margin = margin(t = 2.5, r = 2.5, b = 5, l = 2.5))) +
+  theme(legend.position = "bottom") +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank()) +
+  theme(strip.text = element_text(size = 18)) +
+  theme(panel.spacing = unit(2, "lines")) +
+  theme(legend.text = element_text(margin = margin(r = 10))) 
+
+print(fig2)
+
+ggsave(filename = "../figures/fig2.pdf", device = pdf, width = 8.27, height = 5.83)
+```
+
+## Figure 4
+
+```{r}
+fig4 <- data_combined |>
   mutate(condition = case_when(
     condition.y == "control" ~ "Control",
     condition.y == "regret_early" ~ "Early Regret",
     condition.y == "regret_late" ~ "Late Regret"
   )) |>
   filter(condition != "Control") |>
-  ggplot(aes(trial_index)) +
-  geom_smooth(aes(y = expected_value_human, color = "Observed", fill = "Observed", method = "loess"), size = 2, span = 1) +
-  geom_smooth(aes(y = mean_choice_null, colour = '"No Regret"', fill = '"No Regret"', method = "loess"), size = 2, span = 10) +
-  geom_smooth(aes(y = mean_choice_gg, colour = '"Grass-Is-Greener"', fill = '"Grass-Is-Greener"', method = "loess"), size = 2, span = 10) +
-  geom_smooth(aes(y = mean_choice_cf, color = '"Counterfactual Sampling"', fill = '"Counterfactual Sampling"', method = "loess"), size = 2, span = 10) +
-  scale_colour_manual(values = c("#A6415C", "#4C8659", "#6B6C69", "#f79b57")) +
-  scale_fill_manual(name = element_blank(), values = c("#A6415C", "#4C8659",  "#6B6C69", "#f79b57")) +
-  labs(x = "Trial", y = "Expected Value") +
+ggplot(aes(x = trial_index)) +
+  # add the random chance line at y = 0.466
+  geom_hline(yintercept = 0.4666, linetype = "dashed", color = "gray") +
+  geom_text(aes(x = 6, y = 0.4566, label = "Chance"), color = "gray", size = 4) +
+  # add the ceiling line at y = 0.70
+  geom_hline(yintercept = 0.7, linetype = "dashed", color = "black") +
+    geom_text(aes(x = 6, y = 0.69, label = "Ceiling"), color = "black", size = 4) +
+  # calculate the mean of each of the 4 models at each trial index and plot geom line
+#   stat_summary(
+#     aes(y = mean_choice_gg, color = "GiG", fill = "GiG"), 
+#     fun = mean, geom = "line", size = 0.75
+#   ) +
+#   stat_summary(
+#     aes(y = mean_choice_null, color = "Null", fill = "Null"), 
+#     fun = mean, geom = "line", size = 0.75
+#   ) +
+#   stat_summary(
+#     aes(y = mean_choice_cf, color = "CS", fill = "CS"), 
+#     fun = mean, geom = "line", size = 0.75
+#   ) +
+# # for human data do a moving average over 3 trials
+#   stat_summary(
+#     aes(y = expected_value_human, color = "Human", fill = "Human"), 
+#     fun = mean, geom = "line", size = 0.75
+#   ) +
+  stat_smooth(
+    aes(y = mean_choice_null, color = "No Regret", fill = "No Regret", method = "loess")
+  ) +
+  stat_smooth(
+    aes(y = mean_choice_gg, color = "Grass-Is-Greener", fill = "Grass-Is-Greener", method = "loess")
+  ) +
+  stat_smooth(
+    aes(y = mean_choice_cf, color = "Counterfactual Sampling", fill = "Counterfactual Sampling", method = "loess") # add lines for different omegas
+  ) +
+  geom_smooth(aes(y = expected_value_human, color = "Human", fill = "Human"), size = 0.75) +
+  scale_color_manual(
+    name = NULL,
+    values = c(
+      "Human" = "#F2935C",
+      "No Regret" = "#6B6C69",
+      "Grass-Is-Greener" = "#4C8659",
+      "Counterfactual Sampling" = "#A6415C"
+    )
+  ) +
+  scale_color_manual(
+    name = NULL,
+    values = c(
+      "Human" = "#F2935C",
+      "No Regret" = "#6B6C69",
+      "Grass-Is-Greener" = "#4C8659",
+      "Counterfactual Sampling" = "#A6415C"
+    )
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c(
+      "Human" = "#F2935C",
+      "No Regret" = "#6B6C69",
+      "Grass-Is-Greener" = "#4C8659",
+      "Counterfactual Sampling" = "#A6415C"
+    )
+  ) +
+  labs(x = "Trial index", y = "Expected value") +
   theme_minimal() +
-  theme(axis.text.x = element_text(size = 20),
-        axis.text.y = element_text(size = 20),
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
         axis.title.x = element_text(size = 24),
         axis.title.y = element_text(size = 24)) +
-  theme(legend.text = element_text(size = 20)) +
-  theme(legend.text = element_text(margin = margin(t = 5, r = 5, b = 5, l = 5))) +
-  theme(legend.title = element_text(size = 20)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.05)) +
+  theme(legend.text = element_text(size = 18)) +
+  theme(legend.text = element_text(margin = margin(t = 2.5, r = 2.5, b = 5, l = 2.5))) +
   theme(legend.position = "bottom") +
-  theme(plot.background = element_rect(color = "black", size = 1)) +
   theme(panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank()) +
   facet_wrap(~ condition) +
   theme(strip.text = element_text(size = 24)) +
-  guides(color = "none") +
   theme(panel.spacing = unit(2, "lines")) +
-  theme(legend.text = element_text(margin = margin(r = 10)))
+  theme(legend.text = element_text(margin = margin(r = 10))) +
+  guides(
+    colour = guide_legend(ncol = 2, byrow = TRUE),
+    fill   = guide_legend(ncol = 2, byrow = TRUE)
+  ) 
+
+print(fig4)
+
+ggsave(filename = "../figures/fig4.pdf", device = pdf, width = 8.27, height = 5.83)
 
 ```
 
-### Fit
-```{r}
-regret_1_sim_data |>
-  ggplot(aes(x = total_expected_value.x, y = total_expected_value.y)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  labs(x = "Points earned in simulation", y = "Points earned in experiment") +
-  stat_cor(method = "pearson")
-
-regret_1_sim_data_null |>
-  ggplot(aes(x = total_expected_value.x, y = total_expected_value.y)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  labs(x = "Points earned in simulation", y = "Points earned in experiment") +
-  stat_cor(method = "pearson")
-
-cf_1_sim_data |>
-  ggplot(aes(x = total_expected_value.x, y = total_expected_value.y)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  labs(x = "Points earned in simulation", y = "Points earned in experiment") +
-  stat_cor(method = "pearson")
-```
-
-```{r}
-sim_data_regret <- read_csv("../data/simulation_output_all_participants.csv") |>
-  rename(workerid = participant) |> 
-  mutate(trial_index = trial_index + 1) |>
-  mutate(condition = str_remove(condition, "regret_")) 
-  
-
-sim_probs_regret <- sim_data_regret %>%
-  group_by(workerid, trial_index, choice_goodbad) %>%
-  summarize(count = n(), .groups = "drop") %>%
-  mutate(prob = count/100)
-
-merged_data_regret <- data_processed %>%
-  filter(trial_type == "noregret") %>%
-  filter(condition != "control") %>%
-  left_join(sim_probs_regret,
-            by = c("workerid", "trial_index", "choice_goodbad"))
-
-merged_data_regret <- merged_data_regret %>%
-  mutate(prob = ifelse(is.na(prob), 0, prob),     
-         prob = ifelse(prob == 0, 1e-8, prob),    
-         log_prob = log(prob))
-
-likelihoods_regret <- merged_data_regret %>%
-  filter(trial_index < 61) %>%
-  group_by(workerid) %>%
-  summarize(
-    log_likelihood_regret = sum(log_prob),
-    neg_log_likelihood_regret = -sum(log_prob),
-    .groups = "drop"
-  )
-print(likelihoods_regret)
-
-likelihoods_regret <- likelihoods_regret %>%
-  mutate(overall_probability = exp(log_likelihood_regret))
-
-```
-
-
-```{r}
-sim_data_null <- read_csv("../data/simulation_output_all_participants_null.csv") |>
-  rename(workerid = participant) |> 
-  mutate(trial_index = trial_index + 1) |>
-  mutate(condition = str_remove(condition, "regret_")) 
-  
-sim_probs_null <- sim_data_null %>%
-  group_by(workerid, trial_index, choice_goodbad) %>%
-  summarize(count = n(), .groups = "drop") %>%
-  mutate(prob = count/100)
-
-merged_data <- data_processed %>%
-  filter(trial_type == "noregret") %>%
-  filter(condition != "control") %>%
-  left_join(sim_probs_null,
-            by = c("workerid", "trial_index", "choice_goodbad"))
-
-merged_data <- merged_data %>%
-  mutate(prob = ifelse(is.na(prob), 0, prob),   
-         prob = ifelse(prob == 0, 1e-8, prob),  
-         log_prob = log(prob))
-
-likelihoods_null <- merged_data %>%
-  filter(trial_index < 61) %>%
-  group_by(workerid) %>%
-  summarize(
-    log_likelihood_null = sum(log_prob),
-    neg_log_likelihood_null = -sum(log_prob),
-    .groups = "drop"
-  )
-print(likelihoods_null)
-
-likelihoods_null <- likelihoods_null %>%
-  mutate(overall_probability = exp(log_likelihood_null))
-```
-
-```{r}
-likelihoods_merged <- likelihoods_regret |>
-  left_join(likelihoods_null, by = "workerid") |>
-    mutate(
-    ll_diff = log_likelihood_regret - log_likelihood_null,
-    likelihood_ratio = exp(ll_diff)
-  )
-
-# calculate average likelihood ratio by condition
-likelihoods_merged |>
-  summarize(mean(likelihood_ratio, na.rm = TRUE))
-```
-
-```{r}
-likelihoods_merged <- likelihoods_regret |>
-  left_join(likelihoods_null, by = "workerid") |>
-    mutate(
-    likelihood_regret = exp(log_likelihood_regret),
-    likelihood_null = exp(log_likelihood_null),
-    likelihood_ratio = likelihood_regret / likelihood_null)
-
-```
-
-```{r}
-data_combined <- sim_combined |>
-  left_join(data_expanded, by = c("workerid", "trial_index", "sim_number")) |>
-  select(workerid, trial_index, condition.y, choice_gg, choice_null, choice_cf, expected_value_human, sim_number) |>
-  group_by(workerid, trial_index) |>
-  mutate(prob_gg = mean(choice_gg == expected_value_human, na.rm = TRUE),
-         prob_null = mean(choice_null == expected_value_human, na.rm = TRUE),
-         prob_cf = mean(choice_cf == expected_value_human, na.rm = TRUE),
-         mean_choice_gg = mean(choice_gg, na.rm = TRUE),
-         mean_choice_null = mean(choice_null, na.rm = TRUE),
-         mean_choice_cf = mean(choice_cf, na.rm = TRUE)) |>
-  ungroup() |>
-  select(-c(sim_number, choice_gg, choice_null, choice_cf, mean_choice_gg, mean_choice_null, mean_choice_cf)) |>
-  distinct()
-
-data_combined_ll <- data_combined |> 
-  mutate(condition = case_when(
-    condition.y == "control" ~ "Control",
-    condition.y == "regret_early" ~ "Early Regret",
-    condition.y == "regret_late" ~ "Late Regret"
-  )) |>
-  group_by(workerid, trial_index) |>
-  mutate(sim_count = row_number()) |>
-  ungroup() |>
-  group_by(workerid, sim_count) |>
-  mutate(
-    total_log_likelihood_gg = sum(log(ifelse(prob_gg == 0, 1e-8, prob_gg))),
-    avg_log_likelihood_gg = sum(log(ifelse(prob_gg == 0, 1e-8, prob_gg)))/n(),
-    neg_total_log_likelihood_gg = -sum(log(ifelse(prob_gg == 0, 1e-8, prob_gg))),
-    .groups = "drop"
-  ) |>
-  mutate(total_log_likelihood_null = sum(log(ifelse(prob_null == 0, 1e-8, prob_null))),
-         avg_log_likelihood_null = sum(log(ifelse(prob_null == 0, 1e-8, prob_null)))/n(),
-         neg_total_log_likelihood_null = -sum(log(ifelse(prob_null == 0, 1e-8, prob_null))),
-         .groups = "drop"
-  ) |>
-  ungroup() |>
-  select(workerid, condition, total_log_likelihood_gg, total_log_likelihood_null) |>
-  distinct() |>
-  mutate(ll_diff = exp(total_log_likelihood_gg - total_log_likelihood_null)) 
-  
-
-data_combined_ll |> 
-  summarize(mean_ll_diff = mean(ll_diff, na.rm = TRUE))
-
-observed_mean_ratio <- mean(likelihoods_merged$likelihood_ratio, na.rm = TRUE)
-
-set.seed(123)
-B <- 1000
-bootstrap_means <- numeric(B)
-n <- nrow(likelihoods_merged)
-
-for (b in seq_len(B)) {
-  idx <- sample(seq_len(n), size = n, replace = TRUE)
-  sample_data <- data_combined_ll[idx, ]
-  bootstrap_means[b] <- mean(sample_data$ll_diff, na.rm = TRUE)
-}
-
-ci_lower <- quantile(bootstrap_means, 0.025)
-ci_upper <- quantile(bootstrap_means, 0.975)
-
-cat("Observed Mean LR =", observed_mean_ratio, 
-    "\n95% CI =", ci_lower, "to", ci_upper, "\n\n")
-
-LL_regret <- sum(data_combined_ll$total_log_likelihood_gg, na.rm = TRUE)
-LL_null   <- sum(likelihoods_merged$total_log_likelihood_null, na.rm = TRUE)
-
-k_regret <- 240
-k_null   <- 120
-df_diff  <- k_regret - k_null
-
-# 2a) Likelihood-Ratio Test
-LR_stat <- 2 * (LL_regret - LL_null)
-p_value <- 1 - pchisq(LR_stat, df_diff)
-cat("LRT statistic =", LR_stat,
-    "\nDegrees of freedom =", df_diff,
-    "\np-value =", p_value, "\n\n")
-
-# 2b) Information Criteria
-N <- nrow(data_processed)  
-AIC_regret <- -2 * LL_regret + 2 * k_regret
-AIC_null   <- -2 * LL_null   + 2 * k_null
-BIC_regret <- -2 * LL_regret + k_regret * log(N)
-BIC_null   <- -2 * LL_null   + k_null   * log(N)
-
-cat("AIC(regret) =", AIC_regret, 
-    "; AIC(null) =", AIC_null, "\n")
-cat("BIC(regret) =", BIC_regret, 
-    "; BIC(null) =", BIC_null, "\n")
-
-```
-
-## Hypothesis testing
+## Model hypotheses
 
 ### Hypothesis 1
+
 ```{r}
 m_data_h1 <- regret_1_sim_data |>
   filter(condition.y != "regret_early") 
@@ -575,6 +1037,7 @@ model1_brms <- brm(
 )
 tab_model(model1_brms)
 ```
+
 ### Hypothesis 2
 
 ```{r}
@@ -583,7 +1046,7 @@ m_data_h2 <- regret_1_sim_data |>
 ```
 
 ```{r}
-model1_brms <- brm(
+model2_brms <- brm(
   formula = total_expected_value.x ~ 1 + condition.y,
   data = m_data_h2,
   chains = 4,
@@ -591,7 +1054,7 @@ model1_brms <- brm(
   warmup = 1000,
   save_pars = save_pars(all = TRUE)
 )
-tab_model(model1_brms)
+tab_model(model2_brms)
 ```
 
 ### Hypothesis 3
@@ -617,7 +1080,7 @@ tab_model(model3_brms)
 
 ```{r}
 m_data_h4 <- cf_1_sim_data |>
-  filter(condition.y != "regret_late") 
+  filter(condition.y != "regret_early") 
 ```
 
 ```{r}
@@ -631,7 +1094,101 @@ model4_brms <- brm(
 )
 tab_model(model4_brms)
 ```
-# Session info
+
+## Exploratory analyses
+
+### Omega by condition
+
+```{r}
+gig_data <- read.csv("../data/gig_simulation_thompson_eta.csv") |>
+  filter(condition != "control") |>
+  rename(workerid = participant) |>
+  group_by(workerid, condition) |>
+  summarize(mean_omega = mean(omega), .groups = "drop") |>
+  ungroup() |>
+  mutate(condition = case_when(
+    condition == "regret_regret_control" ~ "Control",
+    condition == "regret_regret_early" ~ "Early Regret",
+    condition == "regret_regret_late" ~ "Late Regret"
+  ))
+
+gig_data |>
+  filter(condition != "Control") |>
+  ggplot(aes(x = mean_omega, fill = condition)) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Omega", y = "Count") +
+  scale_fill_manual(values = c("#8FA6A1", "#A6415C", "#F2935C")) 
+
+```
+
+```{r}
+regret_1_sim_data |>
+  filter(condition.y != "control") %>%
+  # proportion of omega > 1 by condition
+  mutate(prop_omega_gt_1 = ifelse(omega > 1, 0, 1)) |>
+  ungroup() %>%
+  # t test
+  t.test(prop_omega_gt_1 ~ condition.y, data = .) 
+  
+```
+
+### Omega vs. self-reported regret
+
+```{r}
+data_combined_regret <- data_short |>
+  left_join(regret_1_sim_data, by = "workerid") |>
+  mutate(condition = str_remove(condition.x, "regret_")) 
+
+data_combined_regret |>
+  filter(condition != "control") |>
+  ggplot() +
+  aes(x = omega, y = total_expected_value) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~condition) +
+  stat_cor(method = "pearson", label.x = 0.5, label.y = 0.5) 
+```
+### Experiment dynamics
+
+```{r}
+data_processed |>
+  filter(trial_index == 1) |>
+  group_by(condition, choice_goodbad) |>
+  summarize(count = n()) |>
+  mutate(prop = count / sum(count)) |>
+  ungroup() |>
+  ggplot(aes(x = condition, y = prop, fill = choice_goodbad)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Condition", y = "Proportion") +
+  scale_fill_manual(values = c("#8FA6A1", "#A6415C", "#F2935C")) 
+
+data_processed |>
+  filter(trial_index == 1) |>
+  mutate(choice = as.character(choice)) |>
+  group_by(condition, choice) |>
+  summarize(count = n()) |>
+  mutate(prop = count / sum(count)) |>
+  ungroup() |>
+  ggplot(aes(x = condition, y = prop, fill = choice)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Condition", y = "Proportion") +
+  scale_fill_manual(values = c("#8FA6A1", "#A6415C", "#F2935C"))
+
+data_processed |>
+  filter(trial_index == 1) |>
+  mutate(tree_best = as.character(tree_best)) |>
+  group_by(condition, tree_best) |>
+  summarize(count = n()) |>
+  mutate(prop = count / sum(count)) |>
+  ungroup() |>
+  ggplot(aes(x = condition, y = prop, fill = tree_best)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Condition", y = "Proportion") +
+  scale_fill_manual(values = c("#8FA6A1", "#A6415C", "#F2935C"))
+
+```
+
+# Session info 
 
 ```{r}
 sessionInfo() %>%

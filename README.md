@@ -2,7 +2,7 @@
 
 This is a repository containing all relevant data and code for the manuscript titled "Learning from what might have been: A Bayesian model of learning from regret", submitted to the 2025 meeting of the Cognitive Science Society.
 
-The preregistration for this project can be found here: <https://osf.io/ce5ub/?view_only=f92560842de140d0b544194f850920ab>.
+The preregistration for this project can be found here: <https://osf.io/ce5ub/?view_only=1e01d51a2c9a48a1a0645a0520e51830>.
 
 ## Repository structure
 
